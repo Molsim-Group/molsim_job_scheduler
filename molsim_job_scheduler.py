@@ -521,9 +521,21 @@ class JobManipulator(threading.Thread):
         LOCK.acquire()
         for qsub in args:
             JOBS.append(self.job_from_qsub(qsub))
+            time.sleep(0.5)
         LOCK.release()
+        time.sleep(0.5)
 
     def do_qrm(self, args):
+        def get_ids(args):
+            ls = []
+            for num in args:
+                if "-" in num:
+                    st, ed = num.split('-')
+                    ls.extend(range(int(st), int(ed)+1))
+                else:
+                    ls.append(int(num))
+            return set(ls)
+
         global JOBS
 
         user = args[0]
@@ -531,16 +543,20 @@ class JobManipulator(threading.Thread):
         if args[1] == 'all':
             ids = 'all'
         else:
-            ids = set([int(v) for v in args[1:]])
+            ids = get_ids(args[1:])
 
         LOCK.acquire()
+
         if ids=='all':
             JOBS = [job for job in JOBS if not job.user == user]
         else:
             JOBS = [job for job in JOBS 
                 if not (job.user == user and (job.id in ids))
-            ]           
+            ]
+        time.sleep(0.5)           
         LOCK.release()
+
+        time.sleep(0.5)
 
     def job_from_qsub(self, qsub):
         path = pathlib.Path(qsub)

@@ -18,7 +18,7 @@ socket.connect("tcp://localhost:{}".format(mjs.JobManipulator.PORT))
 # str(int(x)): check x is int
 #message = "qrm|" + "|".join([user] + [str(int(v)) for v in sys.argv[1:]])
 id_list = [v for v in sys.argv[1:]]
-assert re.match(r"^(all|[0-9])+$", "".join(id_list))
+assert re.match(r"^(all|[-0-9])+$", "".join(id_list))
 message = "|".join(['qrm', user] + id_list)
 socket.send(message.encode())
 print(sys.argv[1:])
