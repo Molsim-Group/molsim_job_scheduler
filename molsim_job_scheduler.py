@@ -558,13 +558,12 @@ class JobManipulator(threading.Thread):
         LOCK.release()
 
         message = []
-
         if args and args[0] == '-u':
             user = args[1]
         else:
             user = 'all'
-        
-        #socket.send(b"="*(15+20+25+15))
+      
+        message.append("="*(15+20+25+15))
         message.append("{:15s} {:20s} {:25s} {:15s}".format("Id", "Nodes", "File", "User"))
         message.append("="*(15+20+25+15))
 
@@ -576,10 +575,7 @@ class JobManipulator(threading.Thread):
               message.append("{:<15d} {:20s} {:<25s} {:<15s}"
                      .format(job.id, job.nodes, name[:25], job.user)
                       )
-
         return "\n".join(message)
-                                                                               
-         
 
     def do_qrm(self, args):
         def get_ids(args):
