@@ -1,5 +1,6 @@
 import os
 import re
+import copy
 import time
 import atexit
 import pathlib
@@ -267,8 +268,10 @@ class StatParser:
         # Update last_update_time.
         for k in stat_data.keys():
             stat_data[k] = stat_data[k]._replace(last_update_time=current_time)
-
+        
+        #LOCK.acquire()
         write_stat(stat_data)
+        #LOCK.release()
 
         return stat_data
 
@@ -350,7 +353,11 @@ class Job:
             string = string[:-1]
         tokens = string.split("|")
         
-        job = Job(*tokens)
+        try:
+            job = Job(*tokens)
+        except TypeError:
+            print (tokens)
+            raise TypeError()
         # Type cast.
         job.id = int(job.id)
         job.time = float(job.time)
@@ -478,6 +485,22 @@ def read_jobs():
     return jobs
 
 
+def check_pbc_name(_dir, _file):
+    path = pathlib.Path("{}/{}".format(_dir, _file))
+    try:
+        with path.open("r") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                tokens = line.split()
+                if tokens[0] == "#PBS" and tokens[1] == "-N":
+                    return " ".join(tokens[2:])
+                return None
+    except:
+      return None
+                                                                                                                                                                        
+
 class JobManipulator(threading.Thread):
     PORT = 55554
     def __init__(self):
@@ -511,10 +534,13 @@ class JobManipulator(threading.Thread):
 
             if function == "qas":
                 self.do_qas(tokens[1:])
+                socket.send(b"Done")
             elif function == "qrm":
                 self.do_qrm(tokens[1:])
-
-            socket.send(b"Done")
+                socket.send(b"Done")
+            elif function == "qinfo":
+                message = self.do_qinfo(tokens[1:])
+                socket.send(message.encode())
 
     def do_qas(self, args):
         global JOBS
@@ -524,6 +550,36 @@ class JobManipulator(threading.Thread):
             time.sleep(0.5)
         LOCK.release()
         time.sleep(0.5)
+
+    def do_qinfo(self, args):
+        global JOBS
+        LOCK.acquire()
+        jobs = copy.deepcopy(JOBS)
+        LOCK.release()
+
+        message = []
+
+        if args and args[0] == '-u':
+            user = args[1]
+        else:
+            user = 'all'
+        
+        #socket.send(b"="*(15+20+25+15))
+        message.append("{:15s} {:20s} {:25s} {:15s}".format("Id", "Nodes", "File", "User"))
+        message.append("="*(15+20+25+15))
+
+        for job in jobs:
+            name = check_pbc_name(job.dir, job.file)
+            if name is None:
+                name = job.file
+            if user=='all' or user==job.user:
+              message.append("{:<15d} {:20s} {:<25s} {:<15s}"
+                     .format(job.id, job.nodes, name[:25], job.user)
+                      )
+
+        return "\n".join(message)
+                                                                               
+         
 
     def do_qrm(self, args):
         def get_ids(args):
