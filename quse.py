@@ -30,7 +30,8 @@ class DataBase():
                     continue
                 name, max_cores, limits = line.split()
                 max_cores = int(max_cores)
-                config[name] = max_cores
+                limits = int(limits)
+                config[name] = (max_cores, limits)
         return config
 
     @property
@@ -114,12 +115,12 @@ class ShowByPro(Show):
     def func_each(self, data):
         for k, v in self.config.items():
             print("{:15s} {:>6d} / {:<6d} ({:>6.1f} %)"
-                  .format(k, data[k], v, data[k]/v*100))
+                  .format(k, data[k], v[1], data[k]/v[1]*100))
 
     def func_all(self, all_users):
         for k, v in self.config.items():
             print("{:15s} {:>6d} / {:<6d} ({:>6.1f} %)"
-                  .format(k, all_users[k], v, all_users[k]/v*100))
+                  .format(k, all_users[k], v[0], all_users[k]/v[0]*100))
 
 
 class ShowByNode(ShowByPro):
