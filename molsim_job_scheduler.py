@@ -58,11 +58,17 @@ def parse_nodes(nodes):
     """
     tokens = nodes.split(":")
     assert len(tokens) == 3
+    
+    try:
+        num_nodes = int(tokens[0])
+    except ValueError:
+        num_nodes = len(tokens[0].split("+"))
 
-    n_cores = int(tokens[0]) * int(tokens[1].split("=")[1])
+    num_cores = int(tokens[1].split("=")[1])
+    total_cores = num_nodes * num_cores
     node_name = tokens[2]
 
-    return node_name, n_cores
+    return node_name, total_cores
 
 
 def read_stat():
