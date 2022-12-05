@@ -1,0 +1,3 @@
+#!/bin/bash
+user=$USER
+/bin/python3 /usr/local/mjs/qinfo.py -u $USER $@

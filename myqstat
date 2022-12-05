@@ -1,0 +1,3 @@
+#!/bin/bash
+user=$USER
+qstat -u $USER $@
