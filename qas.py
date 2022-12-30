@@ -4,16 +4,23 @@ import pathlib
 import zmq
 import molsim_job_scheduler as mjs
 
-assert len(sys.argv) == 2
+#print (sys.argv)
+assert len(sys.argv) > 1
 
-qsub_file = pathlib.Path(sys.argv[1])
-assert qsub_file.exists()
+job_ls = []
+for job in sys.argv[1:]:
+    qsub_file = pathlib.Path(job)
 
-nodes = mjs.extract_nodes_from_qsub(qsub_file)
-assert nodes is not None
+    # Check node exists
+    assert qsub_file.exists(), f'{qsub_file} does not exists'
 
-# Check nodes format.
-mjs.parse_nodes(nodes)
+    # Check node format
+    nodes = mjs.extract_nodes_from_qsub(qsub_file)
+    assert nodes is not None, f'{qsub_file} have a wrong node information.'
+    mjs.parse_nodes(nodes)
+    
+    # Append resolve path
+    job_ls.append(str(qsub_file.resolve()))
 
 context = zmq.Context()
 
@@ -22,7 +29,9 @@ socket = context.socket(zmq.REQ)
 socket.connect("tcp://localhost:{}".format(mjs.JobManipulator.PORT))
 
 # message = "qas|qsubfile"
-message = "qas|" + str(qsub_file.resolve())
+message = "qas|" + "|".join(job_ls)
 socket.send(message.encode())
-print(qsub_file)
+
+for qsub_file in sys.argv[1:]:
+    print(qsub_file)
 print(socket.recv().decode("utf-8"))

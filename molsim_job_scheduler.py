@@ -551,9 +551,13 @@ class JobManipulator(threading.Thread):
     def do_qas(self, args):
         global JOBS
         LOCK.acquire()
+        
+        job_ls = []
         for qsub in args:
-            JOBS.append(self.job_from_qsub(qsub))
-            time.sleep(0.5)
+            job_ls.append(self.job_from_qsub(qsub))
+        JOBS.extend(job_ls)
+        time.sleep(0.5)
+
         LOCK.release()
         time.sleep(0.5)
 
@@ -616,7 +620,7 @@ class JobManipulator(threading.Thread):
 
         time.sleep(0.5)
 
-    def job_from_qsub(self, qsub):
+    def job_from_qsub(self, qsub:str):
         path = pathlib.Path(qsub)
         self.max_id += 1
         _id = self.max_id
@@ -626,10 +630,12 @@ class JobManipulator(threading.Thread):
         nodes = extract_nodes_from_qsub(path)
         user = path.parts[3]        
         print (_id, _dir, _file, _time, nodes, user)
-        return Job(
+        
+        job = Job(
             _id=_id, _dir=_dir, _file=_file,
             _time=_time, nodes=nodes, user=user
         )
+        return job
 
 
 def main():
