@@ -342,6 +342,11 @@ class Job:
         self.time = _time
         self.nodes = nodes
         self.user = user
+        name = check_pbc_name(self.dir, _file)
+        if name is None:
+            self.name = self.file
+        else:
+            self.name = name
 
         self.submitted = False
 
@@ -502,7 +507,7 @@ def check_pbc_name(_dir, _file):
                 tokens = line.split()
                 if tokens[0] == "#PBS" and tokens[1] == "-N":
                     return " ".join(tokens[2:])
-                return None
+            return None
     except:
       return None
                                                                                                                                                                         
@@ -578,12 +583,9 @@ class JobManipulator(threading.Thread):
         message.append("="*(15+20+25+15))
 
         for job in jobs:
-            name = check_pbc_name(job.dir, job.file)
-            if name is None:
-                name = job.file
             if user=='all' or user==job.user:
-              message.append("{:<15d} {:20s} {:<25s} {:<15s}"
-                     .format(job.id, job.nodes, name[:25], job.user)
+              message.append("{:<15d} {:<20s} {:<25s} {:<15s}"
+                     .format(job.id, job.nodes[:20], job.name[:25], job.user)
                       )
         return "\n".join(message)
 
