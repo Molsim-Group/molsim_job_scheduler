@@ -21,7 +21,7 @@ except IndexError:
     num = 3
 
 np.random.seed(seed)
-selection = np.random.choice(lunch_list, num)
+selection = np.random.choice(lunch_list, num, replace=False)
 
 for i, key in enumerate(selection, 1):
     print (f"{i} 순위 : {key}")

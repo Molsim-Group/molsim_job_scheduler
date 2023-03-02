@@ -552,7 +552,59 @@ class JobManipulator(threading.Thread):
             elif function == "qinfo":
                 message = self.do_qinfo(tokens[1:])
                 socket.send(message.encode())
+            elif function == 'msuser':
+                message = self.do_msuser(tokens[1:])
+                socket.send(message.encode())
 
+    def do_msuser(self, args):
+        cmd = 'cd /home/users/biovia/MS/BIOVIA_LicensePack/etc; lp_lmstat -a'
+        proc = subprocess.Popen(['su', '-', 'biovia', '-c', cmd],
+               stdout = subprocess.PIPE,
+               stderr = subprocess.PIPE,)
+        out, err = proc.communicate()
+        out = out.decode('utf-8')
+        err = err.decode('utf-8')
+
+        if err:
+            return err
+
+        desktop_name = {}
+        with open('desktop_name.dat') as f:
+            for line in f:
+                if line.startswith('#'):
+                    continue
+                desktop, name = line.split()
+                desktop_name[desktop] = name
+
+        user_dict = collections.defaultdict(list)
+        name = False
+
+        for line in out.split('\n'):
+            name_match = re.match(r"^Users of (?P<MS>MS_)?(?P<name>.+):", line)
+            user_match = re.match(r"^\s+.+?\s(?P<user>.+?)\s.+start (?P<time>.+)$", line)
+
+            if name_match:
+                if not name_match.group('MS'):
+                    name = None
+                else:
+                    name = name_match.group('name')
+
+            elif user_match:
+                user = user_match.group('user')
+                time = user_match.group('time')
+                user = desktop_name.get(user, user)
+                if name:
+                    user_dict[name].append((user, time))
+
+        txt = ''
+        for key, value in user_dict.items():
+            txt += '-'*50+'\n'
+            txt += f'MS {key.capitalize()}\n\n'
+            for name, time in value:
+                txt += f"{name} (Start time : {time})\n"
+        txt += '-'*50
+        return txt                                                                                                                                            
+    
     def do_qas(self, args):
         global JOBS
         LOCK.acquire()
