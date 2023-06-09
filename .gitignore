@@ -9,3 +9,4 @@ backup/
 *.log
 test_*.py
 nohup.out
+test_qsub/

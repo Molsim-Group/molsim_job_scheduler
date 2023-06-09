@@ -8,6 +8,7 @@ import threading
 import subprocess
 import collections
 from xml.etree import ElementTree
+from xml.etree.ElementTree import ParseError
 
 import zmq
 
@@ -155,13 +156,22 @@ class StatParser:
             [QSTAT_PATH, "-xf"],
             stdout=subprocess.PIPE
         )
+        
+        """try:
+            root = ElementTree.fromstring(result.stdout.decode("utf-8"))
+            root_iter = root.findall("Job")
+        except ParseError as e:
+            print (e)
+            root_iter = []"""
+
         root = ElementTree.fromstring(result.stdout.decode("utf-8"))
+        root_iter = root.findall("Job")
 
         stat_data = read_stat()
 
         # Get current stat.       
         data = ""
-        for e in root.findall("Job"):
+        for e in root_iter:
             c = e.find("job_state")
             #if c.text != "R":
             #    continue
