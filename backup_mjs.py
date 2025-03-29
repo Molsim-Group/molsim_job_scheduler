@@ -1,6 +1,5 @@
 import os
 import re
-import copy
 import time
 import atexit
 import pathlib
@@ -8,8 +7,7 @@ import threading
 import subprocess
 import collections
 from xml.etree import ElementTree
-from xml.etree.ElementTree import ParseError
-import random
+
 import zmq
 
 QSTAT_PATH = "/usr/local/pbs/bin/qstat"
@@ -27,13 +25,8 @@ Stat = collections.namedtuple("Stat",
               "duration",
           ]
        )
-try:
-    with open('/usr/local/mjs/molsim_quotes.dat', 'r') as g:
-        molsim_quotes = [line.strip() for line in g.readlines()] 
-except Exception as e:
-    print('There is no quotes.')
-    molsim_quotes = []
-    
+
+
 def print_xml(elem, level=0):
     for c in elem:
         print("    "*level, c.tag, c.text)
@@ -53,8 +46,8 @@ def extract_nodes_from_qsub(qsub):
         names = names.group()
     else:
         names = str(qsub)
-    #if 'debug' in names.lower():
-    #    nodes = nodes+'_debug'
+    if 'debug' in names.lower():
+        nodes = nodes+'_debug'
     return nodes
 
 
@@ -64,17 +57,11 @@ def parse_nodes(nodes):
     """
     tokens = nodes.split(":")
     assert len(tokens) == 3
-    
-    try:
-        num_nodes = int(tokens[0])
-    except ValueError:
-        num_nodes = len(tokens[0].split("+"))
 
-    num_cores = int(tokens[1].split("=")[1])
-    total_cores = num_nodes * num_cores
+    n_cores = int(tokens[0]) * int(tokens[1].split("=")[1])
     node_name = tokens[2]
 
-    return node_name, total_cores
+    return node_name, n_cores
 
 
 def read_stat():
@@ -161,22 +148,13 @@ class StatParser:
             [QSTAT_PATH, "-xf"],
             stdout=subprocess.PIPE
         )
-        
-        """try:
-            root = ElementTree.fromstring(result.stdout.decode("utf-8"))
-            root_iter = root.findall("Job")
-        except ParseError as e:
-            print (e)
-            root_iter = []"""
-
         root = ElementTree.fromstring(result.stdout.decode("utf-8"))
-        root_iter = root.findall("Job")
 
         stat_data = read_stat()
 
         # Get current stat.       
         data = ""
-        for e in root_iter:
+        for e in root.findall("Job"):
             c = e.find("job_state")
             #if c.text != "R":
             #    continue
@@ -197,16 +175,16 @@ class StatParser:
             nodes = c.text
 
             c = e.find("Job_Name")
-            #debug = 'debug' in c.text.lower()
-            #if debug:
-            #    nodes = nodes+'_debug'
+            debug = 'debug' in c.text.lower()
+            if debug:
+                nodes = nodes+'_debug'
 
-            #if debug and (current_time-start_time > debug_seconds): # DEBUG over limit
-            #    command = f'qdel {job_id}'
-            #    result = subprocess.run(
-            #                ["su", "-", user, "-c", command]
-            #    )
-            #    continue
+            if debug and (current_time-start_time > debug_seconds): # DEBUG over limit
+                command = f'qdel {job_id}'
+                result = subprocess.run(
+                            ["su", "-", user, "-c", command]
+                )
+                continue
 
             end_time = "-1"
             data += "{}|{}|{}|{}|{}|{}\n".format(
@@ -289,10 +267,8 @@ class StatParser:
         # Update last_update_time.
         for k in stat_data.keys():
             stat_data[k] = stat_data[k]._replace(last_update_time=current_time)
-        
-        #LOCK.acquire()
+
         write_stat(stat_data)
-        #LOCK.release()
 
         return stat_data
 
@@ -357,11 +333,6 @@ class Job:
         self.time = _time
         self.nodes = nodes
         self.user = user
-        name = check_pbc_name(self.dir, _file)
-        if name is None:
-            self.name = self.file
-        else:
-            self.name = name
 
         self.submitted = False
 
@@ -379,11 +350,7 @@ class Job:
             string = string[:-1]
         tokens = string.split("|")
         
-        try:
-            job = Job(*tokens)
-        except TypeError:
-            print (tokens)
-            raise TypeError()
+        job = Job(*tokens)
         # Type cast.
         job.id = int(job.id)
         job.time = float(job.time)
@@ -511,22 +478,6 @@ def read_jobs():
     return jobs
 
 
-def check_pbc_name(_dir, _file):
-    path = pathlib.Path("{}/{}".format(_dir, _file))
-    try:
-        with path.open("r") as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                tokens = line.split()
-                if tokens[0] == "#PBS" and tokens[1] == "-N":
-                    return " ".join(tokens[2:])
-            return None
-    except:
-      return None
-                                                                                                                                                                        
-
 class JobManipulator(threading.Thread):
     PORT = 55554
     def __init__(self):
@@ -560,121 +511,19 @@ class JobManipulator(threading.Thread):
 
             if function == "qas":
                 self.do_qas(tokens[1:])
-                if random.random() < 0.4 and (len(molsim_quotes)):
-                    quotes = random.choice(molsim_quotes)
-                    socket.send(quotes.encode())
-                else:
-                    socket.send(b"Done")
-                
             elif function == "qrm":
                 self.do_qrm(tokens[1:])
-                socket.send(b"Done")
-            elif function == "qinfo":
-                message = self.do_qinfo(tokens[1:])
-                socket.send(message.encode())
-            elif function == 'msuser':
-                message = self.do_msuser(tokens[1:])
-                socket.send(message.encode())
 
-    def do_msuser(self, args):
-        #cmd = 'cd /home/users/biovia/MS/BIOVIA_LicensePack/etc; lp_lmstat -a'
-        cmd = 'cd /home/users/biovia/MS/BIOVIA_LicensePack/linux/bin/; lp_lmstat -a'
-        proc = subprocess.Popen(['su', '-', 'biovia', '-c', cmd],
-               stdout = subprocess.PIPE,
-               stderr = subprocess.PIPE,)
-        out, err = proc.communicate()
-        out = out.decode('utf-8')
-        err = err.decode('utf-8')
+            socket.send(b"Done")
 
-        if err:
-            return err
-
-        desktop_name = {}
-        with open('desktop_name.dat') as f:
-            for line in f:
-                if line.startswith('#'):
-                    continue
-                if not line.strip():
-                    continue
-                desktop, name = line.split()
-                desktop_name[desktop] = name
-
-        user_dict = collections.defaultdict(list)
-        name = False
-
-        for line in out.split('\n'):
-            name_match = re.match(r"^Users of (?P<MS>MS_)?(?P<name>.+):", line)
-            user_match = re.match(r"^\s+.+?\s(?P<user>.+?)\s.+start (?P<time>.+)$", line)
-
-            if name_match:
-                if not name_match.group('MS'):
-                    name = None
-                else:
-                    name = name_match.group('name')
-
-            elif user_match:
-                user = user_match.group('user')
-                time = user_match.group('time')
-                user = desktop_name.get(user, user)
-                if name:
-                    user_dict[name].append((user, time))
-
-        txt = ''
-        for key, value in user_dict.items():
-            txt += '-'*50+'\n'
-            txt += f'MS {key.capitalize()}\n\n'
-            for name, time in value:
-                txt += f"{name} (Start time : {time})\n"
-        txt += '-'*50
-        return txt                                                                                                                                            
-    
     def do_qas(self, args):
         global JOBS
         LOCK.acquire()
-        
-        job_ls = []
         for qsub in args:
-            job_ls.append(self.job_from_qsub(qsub))
-        JOBS.extend(job_ls)
-        time.sleep(0.5)
-
+            JOBS.append(self.job_from_qsub(qsub))
         LOCK.release()
-        time.sleep(0.5)
-
-    def do_qinfo(self, args):
-        global JOBS
-        LOCK.acquire()
-        jobs = copy.deepcopy(JOBS)
-        LOCK.release()
-
-        message = []
-        if args and args[0] == '-u':
-            user = args[1]
-        else:
-            user = 'all'
-      
-        message.append("="*(15+20+25+15))
-        message.append("{:15s} {:20s} {:25s} {:15s}".format("Id", "Nodes", "File", "User"))
-        message.append("="*(15+20+25+15))
-
-        for job in jobs:
-            if user=='all' or user==job.user:
-              message.append("{:<15d} {:<20s} {:<25s} {:<15s}"
-                     .format(job.id, job.nodes[:20], job.name[:25], job.user)
-                      )
-        return "\n".join(message)
 
     def do_qrm(self, args):
-        def get_ids(args):
-            ls = []
-            for num in args:
-                if "-" in num:
-                    st, ed = num.split('-')
-                    ls.extend(range(int(st), int(ed)+1))
-                else:
-                    ls.append(int(num))
-            return set(ls)
-
         global JOBS
 
         user = args[0]
@@ -682,22 +531,18 @@ class JobManipulator(threading.Thread):
         if args[1] == 'all':
             ids = 'all'
         else:
-            ids = get_ids(args[1:])
+            ids = set([int(v) for v in args[1:]])
 
         LOCK.acquire()
-
         if ids=='all':
             JOBS = [job for job in JOBS if not job.user == user]
         else:
             JOBS = [job for job in JOBS 
                 if not (job.user == user and (job.id in ids))
-            ]
-        time.sleep(0.5)           
+            ]           
         LOCK.release()
 
-        time.sleep(0.5)
-
-    def job_from_qsub(self, qsub:str):
+    def job_from_qsub(self, qsub):
         path = pathlib.Path(qsub)
         self.max_id += 1
         _id = self.max_id
@@ -707,12 +552,10 @@ class JobManipulator(threading.Thread):
         nodes = extract_nodes_from_qsub(path)
         user = path.parts[3]        
         print (_id, _dir, _file, _time, nodes, user)
-        
-        job = Job(
+        return Job(
             _id=_id, _dir=_dir, _file=_file,
             _time=_time, nodes=nodes, user=user
         )
-        return job
 
 
 def main():

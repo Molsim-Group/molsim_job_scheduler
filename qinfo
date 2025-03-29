@@ -1,3 +1,3 @@
 #!/bin/bash
 
-/bin/python3 /usr/local/mjs/qinfo.py $@
+/opt/anaconda3/2020.11/bin/python3 /usr/local/mjs/qinfo.py $@
