@@ -8,7 +8,7 @@ import numpy as np
 
 
 today = datetime.today()
-seed = int(f'{today.year}{today.month}{today.day}')
+seed = int(f'{today.year}{today.month}{today.day}')*2
 
 with open('restaurant_name.dat', 'r') as f:
     lunch_list = [line.strip() for line in f.readlines()]
@@ -34,12 +34,12 @@ emoji2 = "\u2615"
 emoji3 = "\U0001F3EB"
 
 print('---------------------------------------------------------')
-print(f'{emoji1}오늘의 점심 추천 (어은동){emoji1}')
+print(f'{emoji1}오늘의 저녁  추천 (어은동){emoji1}')
 for i, key in enumerate(selection, 1):
     print (f"{i} 순위 : {key}")
 
-print('---------------------------------------------------------')
-print(f"{emoji2}오늘의 카페: {selection_cafe[0]}{emoji2}")
+#print('---------------------------------------------------------')
+#print(f"{emoji2}오늘의 카페: {selection_cafe[0]}{emoji2}")
 
 
 
@@ -70,10 +70,10 @@ def extract_menu(td_tag):
 lunch_menu = extract_menu(tds[1])
 dinner_menu = extract_menu(tds[2])
 
-# lunch
+# dinner
 print('---------------------------------------------------------')
 print(f"{emoji3} 서측학식{emoji3}")
-for item in lunch_menu:
+for item in dinner_menu:
     print("-", item)
 
 print('---------------------------------------------------------')
