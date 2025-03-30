@@ -2,6 +2,7 @@ import os
 import re
 import copy
 import time
+import json
 import atexit
 import pathlib
 import threading
@@ -9,6 +10,7 @@ import subprocess
 import collections
 from xml.etree import ElementTree
 from xml.etree.ElementTree import ParseError
+from datetime import datetime
 import random
 import zmq
 
@@ -33,6 +35,20 @@ try:
 except Exception as e:
     print('There is no quotes.')
     molsim_quotes = []
+
+
+
+def birthday():
+    today=datetime.today()
+    with open('/usr/local/mjs/birthday.dat', 'r') as g:
+        birthday_dict = json.load(g)
+    month = '0'+str(today.month) if (today.month) < 10 else str(today.month)
+    day = '0'+str(today.day) if (today.day) < 10 else str(today.day)
+    if f'{month}/{day}' in birthday_dict:
+        return birthday_dict[f'{month}/{day}']
+    else:
+        return ''
+
     
 def print_xml(elem, level=0):
     for c in elem:
@@ -560,7 +576,13 @@ class JobManipulator(threading.Thread):
 
             if function == "qas":
                 self.do_qas(tokens[1:])
-                if random.random() < 0.4 and (len(molsim_quotes)):
+                if birthday():
+                    emoji1 = '\U0001F389'
+                    emoji2 = '\U0001F382'
+                    emoji3 = '\U0001F381'
+                    sentence = f"{emoji1}오늘은 {birthday()}님의 생일{emoji2}입니다~!~!{emoji1}\n{emoji3}생일축하의 한마디를 건네보는 건 어떨까요?{emoji3}" 
+                    socket.send(sentence.encode())
+                elif random.random() < 0.4 and (len(molsim_quotes)):
                     quotes = random.choice(molsim_quotes)
                     socket.send(quotes.encode())
                 else:
