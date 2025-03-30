@@ -10,10 +10,10 @@ import numpy as np
 today = datetime.today()
 seed = int(f'{today.year}{today.month}{today.day}')*2
 
-with open('restaurant_name.dat', 'r') as f:
+with open('/usr/local/mjs/restaurant_name.dat', 'r') as f:
     lunch_list = [line.strip() for line in f.readlines()]
 
-with open('cafe_name.dat', 'r') as g:
+with open('/usr/local/mjs/cafe_name.dat', 'r') as g:
     cafe_list = [line.strip() for line in g.readlines()]
 
 lunch_list = np.array(lunch_list, dtype=object)

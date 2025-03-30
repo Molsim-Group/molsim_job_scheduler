@@ -1,7 +1,8 @@
 __pycache__/
 *_backup/
 backup/
-
+stat*
+jobs*
 #*.dat
 *.pyc
 *.txt
