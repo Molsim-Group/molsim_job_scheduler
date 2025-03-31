@@ -582,7 +582,7 @@ class JobManipulator(threading.Thread):
                     emoji3 = '\U0001F381'
                     sentence = f"{emoji1}오늘은 {birthday()}님의 생일{emoji2}입니다~!~!{emoji1}\n{emoji3}생일축하의 한마디를 건네보는 건 어떨까요?{emoji3}" 
                     socket.send(sentence.encode())
-                elif random.random() < 0.4 and (len(molsim_quotes)):
+                elif random.random() < 0.3 and (len(molsim_quotes)):
                     quotes = random.choice(molsim_quotes)
                     socket.send(quotes.encode())
                 else:
